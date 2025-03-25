@@ -24,7 +24,7 @@ func createTable(db *sql.DB) error {
 	return nil
 }
 
-func insertUser(db *sql.DB, email, prenom, nom, mdp, text string) error {
+func insertUser(db *sql.DB, email, prenom, nom, mdp, text string, likes int) error {
 	query := "INSERT INTO utilisateur (email, prenom, nom, mdp, contenu, likes) VALUES (?, ?, ?, ?, ?, 0)"
 	_, err := db.Exec(query, email, prenom, nom, mdp, text)
 	if err != nil {
@@ -38,6 +38,15 @@ func addLike(db *sql.DB, email string) error {
 	_, err := db.Exec(query, email)
 	if err != nil {
 		return fmt.Errorf("could not add like: %v", err)
+	}
+	return nil
+}
+
+func removeLike(db *sql.DB, email string) error {
+	query := "UPDATE utilisateur SET likes = likes - 1 WHERE email = ? AND likes > 0"
+	_, err := db.Exec(query, email)
+	if err != nil {
+		return fmt.Errorf("could not remove like: %v", err)
 	}
 	return nil
 }
@@ -62,14 +71,13 @@ func main() {
 
 	fmt.Println("Connexion réussie à la base de données SQLite!")
 
-	// Création de la table
 	err = createTable(db)
 	if err != nil {
 		log.Fatalf("could not create table: %v", err)
 	}
 
 	// Exemple d'insertion d'un utilisateur
-	err = insertUser(db, "john.doe@example.com", "John", "Doe", "password123", "Mon premier post")
+	err = insertUser(db, "john.doe@example.com", "John", "Doe", "password123", "Mon premier post", 0)
 	if err != nil {
 		log.Fatalf("could not insert user: %v", err)
 	}
@@ -83,6 +91,14 @@ func main() {
 	}
 
 	fmt.Println("Like ajouté avec succès")
+
+	// Enlever un like à l'utilisateur
+	err = removeLike(db, "john.doe@example.com")
+	if err != nil {
+		log.Fatalf("could not remove like: %v", err)
+	}
+
+	fmt.Println("Like retiré avec succès")
 
 	// Récupérer le nombre de likes
 	likes, err := getUserLikes(db, "john.doe@example.com")
