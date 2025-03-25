@@ -6,6 +6,12 @@ CREATE TABLE utilisateur (
     contenu TEXT
 );
 
+CREATE TABLE like (
+    email TEXT PRIMARY KEY,
+    likes INT
+);
+
+
 CREATE TABLE cybersecurite (
     email TEXT NOT NULL,
     titre TEXT NOT NULL,
