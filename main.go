@@ -2,109 +2,171 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
+// Fonction pour se connecter à SQLite
+func connectDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "baseDonnee.db")
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// Fonction pour créer la table utilisateur
 func createTable(db *sql.DB) error {
-	query := `CREATE TABLE IF NOT EXISTS utilisateur (
-		email TEXT PRIMARY KEY,
-		prenom TEXT,
-		nom TEXT,
-		mdp TEXT,
+	tab := `
+	CREATE TABLE IF NOT EXISTS utilisateur (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		prenom TEXT NOT NULL,
+		nom TEXT NOT NULL,
+		mdp TEXT NOT NULL,
 		contenu TEXT,
 		likes INTEGER DEFAULT 0
-	)`
-	_, err := db.Exec(query)
+	);
+	`
+	_, err := db.Exec(tab)
+	return err
+}
+
+// Fonction pour hacher un mot de passe
+func hashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hash), err
+}
+
+// Fonction pour insérer un utilisateur
+func insertUser(db *sql.DB, prenom, nom, email, password string) error {
+	hashedPassword, err := hashPassword(password)
 	if err != nil {
-		return fmt.Errorf("could not create table: %v", err)
+		return fmt.Errorf("erreur lors du hash du mot de passe : %v", err)
+	}
+
+	tab := "INSERT INTO utilisateur (email, prenom, nom, mdp, contenu, likes) VALUES (?, ?, ?, ?, ?, 0)"
+	_, err = db.Exec(tab, email, prenom, nom, hashedPassword, "")
+	if err != nil {
+		return fmt.Errorf("erreur lors de l'insertion de l'utilisateur : %v", err)
 	}
 	return nil
 }
 
-func insertUser(db *sql.DB, email, prenom, nom, mdp, text string, likes int) error {
-	query := "INSERT INTO utilisateur (email, prenom, nom, mdp, contenu, likes) VALUES (?, ?, ?, ?, ?, 0)"
-	_, err := db.Exec(query, email, prenom, nom, mdp, text)
-	if err != nil {
-		return fmt.Errorf("could not insert user: %v", err)
+// Fonction pour gérer la connexion d'un utilisateur
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Requête reçue pour /login")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		return
 	}
-	return nil
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
+		return
+	}
+
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	log.Printf("Email : %s, Mot de passe : %s", email, password)
+
+	// Connexion à la base de données
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Vérifier si l'utilisateur existe
+	var hashedPassword string
+	err = db.QueryRow("SELECT mdp FROM utilisateur WHERE email = ?", email).Scan(&hashedPassword)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Utilisateur introuvable", http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		http.Error(w, "Mot de passe incorrect", http.StatusUnauthorized)
+		return
+	}
+
+	// Réponse JSON si la connexion réussit
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Connexion réussie"})
 }
 
-func addLike(db *sql.DB, email string) error {
-	query := "UPDATE utilisateur SET likes = likes + 1 WHERE email = ?"
-	_, err := db.Exec(query, email)
-	if err != nil {
-		return fmt.Errorf("could not add like: %v", err)
-	}
-	return nil
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "connect.html")
 }
 
-func removeLike(db *sql.DB, email string) error {
-	query := "UPDATE utilisateur SET likes = likes - 1 WHERE email = ? AND likes > 0"
-	_, err := db.Exec(query, email)
-	if err != nil {
-		return fmt.Errorf("could not remove like: %v", err)
-	}
-	return nil
-}
+func signupHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Requête reçue pour /signup")
 
-func getUserLikes(db *sql.DB, email string) (int, error) {
-	var likes int
-	query := "SELECT likes FROM utilisateur WHERE email = ?"
-	err := db.QueryRow(query, email).Scan(&likes)
-	if err != nil {
-		return 0, fmt.Errorf("could not retrieve likes: %v", err)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		return
 	}
-	return likes, nil
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
+		return
+	}
+
+	prenom := r.FormValue("prenom")
+	nom := r.FormValue("nom")
+	email := r.FormValue("new_email")
+	password := r.FormValue("new_password")
+
+	log.Printf("Prénom : %s, Nom : %s, Email : %s, Mot de passe : %s", prenom, nom, email, password)
+
+	// Connexion à la base de données
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	err = insertUser(db, prenom, nom, email, password)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Erreur lors de l'inscription : %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Réponse JSON si l'inscription réussit
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Inscription réussie"})
 }
 
 func main() {
-	// Connexion à SQLite
-	db, err := sql.Open("sqlite3", "baseDonnee.db")
+	db, err := connectDB()
 	if err != nil {
 		log.Fatalf("Impossible de se connecter à la base de données : %v", err)
 	}
 	defer db.Close()
 
-	fmt.Println("Connexion réussie à la base de données SQLite!")
-
+	// Création de la table si elle n'existe pas
 	err = createTable(db)
 	if err != nil {
-		log.Fatalf("could not create table: %v", err)
+		log.Fatalf("Erreur lors de la création de la table : %v", err)
 	}
 
-	// Exemple d'insertion d'un utilisateur
-	err = insertUser(db, "john.doe@example.com", "John", "Doe", "password123", "Mon premier post", 0)
-	if err != nil {
-		log.Fatalf("could not insert user: %v", err)
-	}
-
-	fmt.Println("User inserted successfully")
-
-	// Ajouter un like à l'utilisateur
-	err = addLike(db, "john.doe@example.com")
-	if err != nil {
-		log.Fatalf("could not add like: %v", err)
-	}
-
-	fmt.Println("Like ajouté avec succès")
-
-	// Enlever un like à l'utilisateur
-	err = removeLike(db, "john.doe@example.com")
-	if err != nil {
-		log.Fatalf("could not remove like: %v", err)
-	}
-
-	fmt.Println("Like retiré avec succès")
-
-	// Récupérer le nombre de likes
-	likes, err := getUserLikes(db, "john.doe@example.com")
-	if err != nil {
-		log.Fatalf("could not get likes: %v", err)
-	}
-
-	fmt.Printf("Nombre de likes de John Doe : %d\n", likes)
+	fmt.Println("Serveur démarré sur http://localhost:8080")
+	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/signup", signupHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
