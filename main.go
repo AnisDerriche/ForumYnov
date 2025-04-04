@@ -36,6 +36,7 @@ func createTable(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		post_id INTEGER,
+		title TEXT,
 		email TEXT,
 		comment TEXT,
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -46,6 +47,7 @@ func createTable(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS posts (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT,
+		title TEXT,
 		contenu TEXT,
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(email) REFERENCES utilisateur(email)
@@ -76,9 +78,9 @@ func insertUser(db *sql.DB, prenom, nom, email, password string) error {
 	return nil
 }
 
-func insertPost(db *sql.DB, email, contenu string) error {
-	tab := "INSERT INTO posts (email, contenu, created_at) VALUES (?, ?, datetime('now'))"
-	_, err := db.Exec(tab, email, contenu)
+func insertPost(db *sql.DB, title, email, contenu string) error {
+	tab := "INSERT INTO posts (title,email, contenu, created_at) VALUES (?,?, ?, datetime('now'))"
+	_, err := db.Exec(tab, title, email, contenu)
 	if err != nil {
 		return fmt.Errorf("could not insert post: %v", err)
 	}
@@ -184,7 +186,47 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "connect.html")
+	http.ServeFile(w, r, "createPost.html")
+}
+
+func createPostHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Requête reçue pour /create_post")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
+		return
+	}
+
+	title := r.FormValue("title")
+	email := r.FormValue("email")
+	contenu := r.FormValue("contenu")
+
+	log.Printf("title : %s, Email : %s, Contenu : %s", title, email, contenu)
+
+	// Connexion à la base de données
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	log.Println("Connexion à la base de données réussie")
+
+	err = insertPost(db, title, email, contenu)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Erreur lors de l'insertion du post : %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Post créé avec succès"})
 }
 
 func main() {
@@ -202,6 +244,7 @@ func main() {
 
 	fmt.Println("Serveur démarré sur http://localhost:8080")
 	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/create_post", createPostHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signupHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))

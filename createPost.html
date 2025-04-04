@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Post</title>
+</head>
+<body>
+    <p> Bienvenu c'est ici poour poster bg</p>
+    <h2>Créer un post</h2>
+    <form action="/create_post" method="POST">
+        <label for="title">Titre :</label>
+        <input type="text" id="title" name="title" required>
+        <br>
+        <label for="contenu">Contenu :</label>
+        <textarea id="content" name="contenu" required></textarea>
+        <button type="submit">Créer le post</button>
+    </form>
+</body>
+</html>
