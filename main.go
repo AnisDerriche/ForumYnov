@@ -32,6 +32,24 @@ func createTable(db *sql.DB) error {
 		contenu TEXT,
 		likes INTEGER DEFAULT 0
 	);
+
+	CREATE TABLE IF NOT EXISTS comments (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		post_id INTEGER,
+		email TEXT,
+		comment TEXT,
+		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(post_id) REFERENCES posts(id),
+		FOREIGN KEY(email) REFERENCES utilisateur(email)
+	);
+
+	CREATE TABLE IF NOT EXISTS posts (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT,
+		contenu TEXT,
+		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(email) REFERENCES utilisateur(email)
+	);
 	`
 	_, err := db.Exec(tab)
 	return err
@@ -54,6 +72,24 @@ func insertUser(db *sql.DB, prenom, nom, email, password string) error {
 	_, err = db.Exec(tab, email, prenom, nom, hashedPassword, "")
 	if err != nil {
 		return fmt.Errorf("erreur lors de l'insertion de l'utilisateur : %v", err)
+	}
+	return nil
+}
+
+func insertPost(db *sql.DB, email, contenu string) error {
+	tab := "INSERT INTO posts (email, contenu, created_at) VALUES (?, ?, datetime('now'))"
+	_, err := db.Exec(tab, email, contenu)
+	if err != nil {
+		return fmt.Errorf("could not insert post: %v", err)
+	}
+	return nil
+}
+
+func insertComment(db *sql.DB, postID int, email, comment string) error {
+	tab := "INSERT INTO comments (post_id, email, comment, created_at) VALUES (?, ?, ?, datetime('now'))"
+	_, err := db.Exec(tab, postID, email, comment)
+	if err != nil {
+		return fmt.Errorf("could not insert comment: %v", err)
 	}
 	return nil
 }
@@ -107,10 +143,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Connexion réussie"})
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "connect.html")
-}
-
 func signupHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Requête reçue pour /signup")
 
@@ -149,6 +181,10 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	// Réponse JSON si l'inscription réussit
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Inscription réussie"})
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "connect.html")
 }
 
 func main() {
