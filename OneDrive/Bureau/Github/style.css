@@ -202,6 +202,14 @@ body {
 .social a:hover {
     color: #ff7200;
 
-    
 
+
+}
+
+@media (max-width: 768px) {
+    .search-bar {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+    }
 }
