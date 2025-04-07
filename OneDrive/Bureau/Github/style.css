@@ -1,0 +1,177 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f4f4;
+    color: #1e1e2f;
+}
+
+.navbar {
+    background: #1e1e2f;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 40px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.logo {
+    font-size: 26px;
+    font-weight: bold;
+    color: #ff7200;
+}
+
+.menu ul {
+    display: flex;    list-style: none;
+    gap: 30px;
+}
+
+.menu ul li a {
+    color: white;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.menu ul li a:hover {
+    color: #ff7200;
+}
+
+.search {
+    display: flex;
+}
+
+.srch {
+    padding: 8px 12px;
+    border: 1px solid #ff7200;
+
+    border-right: none;
+    background: transparent;
+    color: white;
+    border-radius: 4px 0 0 4px;
+}
+
+.btnn {
+    background: #ff7200;
+
+    color: white;
+    border: none;
+    padding: 9px 14px;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    transition: backgrond 0.3s;
+}
+
+.btnn:hover {
+    background: white;
+    color: #ff7200;
+}
+
+  /* Section principale avec background image */
+.main {
+    background: linear-gradient(rgba(30,30,47,0.85), rgba(30,30,47,0.85)), url("library-1400312_1280.jpg") center/cover no-repeat;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    color: white;
+}
+
+.hero {
+    max-width: 1100px;
+    display: flex;
+    gap: 60px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-text h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.hero-text span {
+    color: #ff7200;
+}
+
+.hero-text p {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 25px;
+    color: #f4f4f4;
+}
+
+.btnn.join {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.form {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 30px;
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.form h2 {
+    text-align: center;
+    color: #ff7200;
+    margin-bottom: 20px;
+}
+
+.form input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background: transparent;
+    border: 1px solid #ff7200;
+    border-radius: 6px;
+    color: white;
+}
+
+.form input::placeholder {
+    color: #ccc;
+}
+
+.link {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.link a {
+    color: #ff7200;
+    font-weight: bold;
+}
+
+.liw {
+    text-align: center;
+    margin: 20px 0 10px;
+}
+
+.social {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.social a {
+    color: white;
+    font-size: 24px;
+    transition: color 0.3s;
+}
+
+.social a:hover {
+    color: #ff7200;
+}
+
