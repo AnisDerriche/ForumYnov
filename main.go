@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 
+	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -158,7 +160,6 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-
 func main() {
 	// Connexion à SQLite
 	db, err := sql.Open("sqlite3", "baseDonnee.db")
@@ -227,4 +228,20 @@ func main() {
 	}
 
 	fmt.Printf("Nombre de likes de John Doe : %d\n", likes)
+
+	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHandler(w, r, db)
+	})
+
+	http.HandleFunc("/logout", logoutHandler)
+
+	http.Handle("/moncompte", authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Bienvenue sur votre compte privé !")
+	})))
+
+	fmt.Println("Serveur lancé sur : http://localhost:8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Erreur serveur HTTP : %v", err)
+	}
+
 }
