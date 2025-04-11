@@ -11,7 +11,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Fonction pour se connecter à SQLite
+type Post struct {
+	ID        int    `json:"id"`
+	Title     string `json:"title"`
+	Email     string `json:"email"`
+	Contenu   string `json:"contenu"`
+	CreatedAt string `json:"created_at"`
+}
+
 func connectDB() (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", "baseDonnee.db")
 	if err != nil {
@@ -20,7 +27,6 @@ func connectDB() (*sql.DB, error) {
 	return db, nil
 }
 
-// Fonction pour créer la table utilisateur
 func createTable(db *sql.DB) error {
 	tab := `
 	CREATE TABLE IF NOT EXISTS utilisateur (
@@ -57,13 +63,11 @@ func createTable(db *sql.DB) error {
 	return err
 }
 
-// Fonction pour hacher un mot de passe
 func hashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hash), err
 }
 
-// Fonction pour insérer un utilisateur
 func insertUser(db *sql.DB, prenom, nom, email, password string) error {
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -96,7 +100,36 @@ func insertComment(db *sql.DB, postID int, email, comment string) error {
 	return nil
 }
 
-// Fonction pour gérer la connexion d'un utilisateur
+func getPostsHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, title, email, contenu, created_at FROM posts ORDER BY created_at DESC")
+	if err != nil {
+		http.Error(w, "Erreur lors de la récupération des posts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var posts []Post
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.ID, &post.Title, &post.Email, &post.Contenu, &post.CreatedAt)
+		if err != nil {
+			http.Error(w, "Erreur lors du scan des posts", http.StatusInternalServerError)
+			return
+		}
+		posts = append(posts, post)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Requête reçue pour /login")
 
@@ -116,7 +149,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Email : %s, Mot de passe : %s", email, password)
 
-	// Connexion à la base de données
 	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
@@ -124,7 +156,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	// Vérifier si l'utilisateur existe
 	var hashedPassword string
 	err = db.QueryRow("SELECT mdp FROM utilisateur WHERE email = ?", email).Scan(&hashedPassword)
 	if err == sql.ErrNoRows {
@@ -140,9 +171,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Réponse JSON si la connexion réussit
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Connexion réussie"})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func signupHandler(w http.ResponseWriter, r *http.Request) {
@@ -164,9 +193,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("new_email")
 	password := r.FormValue("new_password")
 
-	log.Printf("Prénom : %s, Nom : %s, Email : %s, Mot de passe : %s", prenom, nom, email, password)
+	log.Printf("Prénom : %s, Nom : %s, Email : %s", prenom, nom, email)
 
-	// Connexion à la base de données
 	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
@@ -180,13 +208,11 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Réponse JSON si l'inscription réussit
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Inscription réussie"})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "createPost.html")
+	http.ServeFile(w, r, "index.html")
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -209,7 +235,6 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("title : %s, Email : %s, Contenu : %s", title, email, contenu)
 
-	// Connexion à la base de données
 	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
@@ -217,16 +242,13 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	log.Println("Connexion à la base de données réussie")
-
 	err = insertPost(db, title, email, contenu)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Erreur lors de l'insertion du post : %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Post créé avec succès"})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func main() {
@@ -236,16 +258,21 @@ func main() {
 	}
 	defer db.Close()
 
-	// Création de la table si elle n'existe pas
 	err = createTable(db)
 	if err != nil {
 		log.Fatalf("Erreur lors de la création de la table : %v", err)
 	}
 
 	fmt.Println("Serveur démarré sur http://localhost:8080")
+
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/create_post", createPostHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signupHandler)
+	http.HandleFunc("/posts", getPostsHandler)
+
+	http.Handle("/connect.html", http.FileServer(http.Dir(".")))
+	http.Handle("/createPost.html", http.FileServer(http.Dir(".")))
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

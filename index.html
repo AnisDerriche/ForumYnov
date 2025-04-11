@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Bazar Étudiant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Le Bazar Étudiant</div>
+        <div class="nav-links">
+            <a href="#" class="nav-link active">Discussions</a>
+            <a href="#" class="nav-link">Bons Plans</a>
+            <a class="nav-link" href="createPost.html">Créer un post</a>
+            <a class="btn-connexion" href="connect.html">Connexion</a>
+        </div>
+    </nav>
+
+    <div class="search-container">
+        <div class="search-box">
+            <input type="text" placeholder="Rechercher dans le forum...">
+        </div>
+    </div>
+
+    <div class="filters">
+        <button class="filter-btn active">Tous</button>
+        <button class="filter-btn">Restauration</button>
+        <button class="filter-btn">Loisirs</button>
+        <button class="filter-btn">Sport</button>
+        <button class="filter-btn">Culture</button>
+    </div>
+
+    <div class="deals-grid">
+        <div class="deal-card">
+            <span class="category-tag">Restauration</span>
+            <div class="deal-content">
+                <h3>Réduction resto U</h3>
+                <p>3,30€ le repas complet ! Valable dans tous les restos U de la ville avec ta carte étudiante.</p>
+                <div class="deal-actions">
+                    <button class="like-btn"><span>0</span></button>
+                    <button class="btn-profiter">En profiter</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="deal-card">
+            <span class="category-tag">Loisirs</span>
+            <div class="deal-content">
+                <h3>Ciné étudiant</h3>
+                <p>5€ la séance le mardi dans tous les cinémas Pathé. Présente ta carte étudiante en caisse !</p>
+                <div class="deal-actions">
+                    <button class="like-btn"><span>0</span></button>
+                    <button class="btn-profiter">En profiter</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="deal-card">
+            <span class="category-tag">Sport</span>
+            <div class="deal-content">
+                <h3>Salle de sport</h3>
+                <p>Abonnement à 20€/mois sans engagement avec Basic Fit. Offre limitée !</p>
+                <div class="deal-actions">
+                    <button class="like-btn"><span>0</span></button>
+                    <button class="btn-profiter">En profiter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
