@@ -1,19 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/main.js" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Post</title>
+    <title>Créer un Post</title>
 </head>
 <body>
-    <p> Bienvenu c'est ici poour poster bg</p>
+    <p>Bienvenue, c'est ici pour poster bg 😎</p>
     <h2>Créer un post</h2>
     <form action="/create_post" method="POST">
+        <label for="email">Ton email :</label>
+        <input type="email" id="email" name="email" required>
+        <br><br>
+
         <label for="title">Titre :</label>
         <input type="text" id="title" name="title" required>
-        <br>
+        <br><br>
+
         <label for="contenu">Contenu :</label>
-        <textarea id="content" name="contenu" required></textarea>
+        <textarea id="contenu" name="contenu" required></textarea>
+        <br><br>
+
         <button type="submit">Créer le post</button>
     </form>
 </body>

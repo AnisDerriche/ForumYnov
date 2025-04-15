@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -61,6 +62,17 @@ func createTable(db *sql.DB) error {
 	`
 	_, err := db.Exec(tab)
 	return err
+}
+
+var store = sessions.NewCookieStore([]byte("secret-key")) // Clé secrète pour les sessions
+
+// Fonction pour récupérer la session
+func getSession(r *http.Request) (*sessions.Session, error) {
+	session, err := store.Get(r, "user-session")
+	if err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func hashPassword(password string) (string, error) {
@@ -171,6 +183,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Création de la session pour l'utilisateur
+	session, err := getSession(r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Values["email"] = email // Stocke l'email dans la session
+	err = session.Save(r, w)
+	if err != nil {
+		http.Error(w, "Erreur lors de la sauvegarde de la session", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirige vers la page d'accueil après la connexion réussie
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -208,10 +234,33 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Création automatique de la session après inscription
+	session, err := getSession(r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Values["email"] = email // Stocke l'email dans la session
+	err = session.Save(r, w)
+	if err != nil {
+		http.Error(w, "Erreur lors de la sauvegarde de la session", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirige vers la page d'accueil après l'inscription et la connexion
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	// Vérifie si l'utilisateur est connecté (session)
+	session, err := getSession(r)
+	if err != nil || session.Values["email"] == nil {
+		// Redirige vers la page de connexion si l'utilisateur n'est pas connecté
+		http.Redirect(w, r, "/connect.html", http.StatusSeeOther)
+		return
+	}
+
+	// Si l'utilisateur est connecté, affiche la page des posts
 	http.ServeFile(w, r, "index.html")
 }
 
@@ -223,15 +272,21 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
+	// Vérifier si l'utilisateur est connecté
+	session, err := getSession(r)
+	if err != nil || session.Values["email"] == nil {
+		http.Error(w, "Vous devez être connecté pour créer un post", http.StatusUnauthorized)
 		return
 	}
 
+	email := session.Values["email"].(string) // Récupérer l'email de la session
 	title := r.FormValue("title")
-	email := r.FormValue("email")
 	contenu := r.FormValue("contenu")
+
+	if title == "" || contenu == "" {
+		http.Error(w, "Tous les champs doivent être remplis", http.StatusBadRequest)
+		return
+	}
 
 	log.Printf("title : %s, Email : %s, Contenu : %s", title, email, contenu)
 
@@ -242,12 +297,14 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	// Insérer le post
 	err = insertPost(db, title, email, contenu)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Erreur lors de l'insertion du post : %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	// Rediriger vers la page d'accueil après l'insertion
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -265,14 +322,14 @@ func main() {
 
 	fmt.Println("Serveur démarré sur http://localhost:8080")
 
+	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/create_post", createPostHandler)
-	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signupHandler)
 	http.HandleFunc("/posts", getPostsHandler)
 
 	http.Handle("/connect.html", http.FileServer(http.Dir(".")))
 	http.Handle("/createPost.html", http.FileServer(http.Dir(".")))
-
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
