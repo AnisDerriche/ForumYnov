@@ -1,71 +1,120 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Le Bazar Étudiant</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Bons Plans - Le Bazar Étudiant</title>
+<link rel="stylesheet" href="style.css">
+
 </head>
+
 <body>
-    <nav class="navbar">
-        <div class="logo">Le Bazar Étudiant</div>
-        <div class="nav-links">
-            <a href="#" class="nav-link active">Discussions</a>
-            <a href="#" class="nav-link">Bons Plans</a>
-            <button class="btn-connexion">Connexion</button>
-        </div>
+
+<header class="navbar">
+    <div class="logo">Le Bazar Étudiant</div>
+    <nav>
+    <a href="#">Discussions</a>
+    <a href="#" class="active">Bons Plans</a>
+    <button class="login">Connexion</button>
     </nav>
+    
+</header>
 
-    <div class="search-container">
-        <div class="search-box">
-            <input type="text" placeholder="Rechercher dans le forum...">
+<main>
+    <section class="search-bar">
+        <input type="text" placeholder="Rechercher dans le forum...">
+    </section>
+
+    <section class="filters">
+        <button class="selected">Tous</button>
+        <button>Restauration</button>
+        <button>Loisirs</button>
+        <button>Sport</button>
+        <button>Culture</button>
+    </section>
+
+    <h2 class="section-title">Bons Plans Étudiants</h2>
+    <section class="cards">
+    <div class="card">
+        <img src="produits-u-bio-1024x683.jpg" alt="Resto U" class="card-img">
+        <div class="card-body">
+        <span class="tag">Restauration</span>
+        <h3>Réduction resto U</h3>
+        <p>3,30€ le repas complet ! Valable dans tous les restos U de la ville avec ta carte étudiante.</p>
+        <div class="card-footer">
+            <span class="like">5</span>
+            <button>En profiter</button>
+        </div>
         </div>
     </div>
 
-    <div class="filters">
-        <button class="filter-btn active">Tous</button>
-        <button class="filter-btn">Restauration</button>
-        <button class="filter-btn">Loisirs</button>
-        <button class="filter-btn">Sport</button>
-        <button class="filter-btn">Culture</button>
-    </div>
-
-    <div class="deals-grid">
-        <div class="deal-card">
-            <span class="category-tag">Restauration</span>
-            <div class="deal-content">
-                <h3>Réduction resto U</h3>
-                <p>3,30€ le repas complet ! Valable dans tous les restos U de la ville avec ta carte étudiante.</p>
-                <div class="deal-actions">
-                    <button class="like-btn"><span>0</span></button>
-                    <button class="btn-profiter">En profiter</button>
-                </div>
-            </div>
+    <div class="card">
+        <img src="popcorn-1433326.jpg" alt="Cinéma étudiant" class="card-img">
+        <div class="card-body">
+            <span class="tag">Loisirs</span>
+            <h3>Ciné étudiant</h3>
+            <p>5€ la séance le mardi dans tous les cinémas Pathé. Présente ta carte étudiante en caisse !</p>
+            <div class="card-footer">
+            <span class="like">0</span>
+            <button>En profiter</button>
         </div>
-
-        <div class="deal-card">
-            <span class="category-tag">Loisirs</span>
-            <div class="deal-content">
-                <h3>Ciné étudiant</h3>
-                <p>5€ la séance le mardi dans tous les cinémas Pathé. Présente ta carte étudiante en caisse !</p>
-                <div class="deal-actions">
-                    <button class="like-btn"><span>0</span></button>
-                    <button class="btn-profiter">En profiter</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="deal-card">
-            <span class="category-tag">Sport</span>
-            <div class="deal-content">
-                <h3>Salle de sport</h3>
-                <p>Abonnement à 20€/mois sans engagement avec Basic Fit. Offre limitée !</p>
-                <div class="deal-actions">
-                    <button class="like-btn"><span>0</span></button>
-                    <button class="btn-profiter">En profiter</button>
-                </div>
-            </div>
         </div>
     </div>
+
+    <div class="card">
+        <img src="fitness-5022191.jpg" alt="Salle de sport" class="card-img">
+        <div class="card-body">
+        <span class="tag">Sport</span>
+        <h3>Salle de sport</h3>
+        <p>Abonnement à 20€/mois sans engagement avec Basic Fit. Offre limitée !</p>
+        <div class="card-footer">
+            <span class="like">7</span>
+            <button>En profiter</button>
+        </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <img src="british-museum-6561029_1920.jpg" alt="Musée gratuit" class="card-img">
+        <div class="card-body">
+        <span class="tag">Culture</span>
+        <h3>Musée gratuit</h3>
+        <p>Accès gratuit aux musées municipaux avec ta carte étudiante, tous les 1ers dimanches du mois.</p>
+        <div class="card-footer">
+            <span class="like">2</span>
+            <button>En profiter</button>
+        </div>
+        </div>
+ </div>
+
+    <div class="card">
+        <img src="books-1281581_1920.jpg" alt="Bibliothèque" class="card-img">
+        <div class="card-body">
+        <span class="tag">Culture</span>
+        <h3>Bibliothèque universitaire</h3>
+        <p>Emprunte gratuitement des livres et accède aux ressources numériques avec ta carte étudiante.</p>
+        <div class="card-footer">
+            <span class="like">5</span>
+            <button>En profiter</button>
+        </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <img src="pizza-2618726.jpg" alt="Pizza étudiant" class="card-img">
+        <div class="card-body">
+        <span class="tag">Restauration</span>
+        <h3>Pizza 2 = 1</h3>
+        <p>Offre spéciale étudiant : une pizza achetée, une offerte dans certaines pizzerias partenaires.</p>
+        <div class="card-footer">
+            <span class="like">5</span>
+            <button>En profiter</button>
+         </div>
+        </div>
+    </div>
+    </section >
+</main>
+
+
 </body>
+
 </html>
