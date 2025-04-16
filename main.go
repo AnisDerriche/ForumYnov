@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -22,14 +21,19 @@ type Post struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "baseDonnee.db")
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
+type Commentaire struct {
+	ID        int    `json:"id"`
+	PostID    int    `json:"post_id"`
+	Email     string `json:"email"`
+	Contenu   string `json:"contenu"`
+	CreatedAt string `json:"created_at"`
 }
 
+func connectDB() (*sql.DB, error) {
+	return sql.Open("sqlite3", "baseDonnee.db")
+}
+
+// Crée les tables nécessaires si elles n'existent pas
 func createTable(db *sql.DB) error {
 	tab := `
 	CREATE TABLE IF NOT EXISTS utilisateur (
@@ -41,7 +45,6 @@ func createTable(db *sql.DB) error {
 		contenu TEXT,
 		likes INTEGER DEFAULT 0
 	);
-
 	CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		post_id INTEGER,
@@ -52,7 +55,6 @@ func createTable(db *sql.DB) error {
 		FOREIGN KEY(post_id) REFERENCES posts(id),
 		FOREIGN KEY(email) REFERENCES utilisateur(email)
 	);
-
 	CREATE TABLE IF NOT EXISTS posts (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT,
@@ -61,12 +63,12 @@ func createTable(db *sql.DB) error {
 		category TEXT,
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(email) REFERENCES utilisateur(email)
-	);
-	`
+	);`
 	_, err := db.Exec(tab)
 	return err
 }
 
+// Met à jour le schéma de la base de données pour ajouter la colonne category
 func updateDatabaseSchema(db *sql.DB) error {
 	_, err := db.Exec("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'general'")
 	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
@@ -75,79 +77,73 @@ func updateDatabaseSchema(db *sql.DB) error {
 	return nil
 }
 
-var store = sessions.NewCookieStore([]byte("secret-key")) // Clé secrète pour les sessions
+var store = sessions.NewCookieStore([]byte("secret-key"))
 
-// Fonction pour récupérer la session
-func getSession(r *http.Request) (*sessions.Session, error) {
-	session, err := store.Get(r, "user-session")
-	if err != nil {
-		return nil, err
+func init() {
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   120,
+		HttpOnly: true,
 	}
-	return session, nil
 }
 
+// Récupère la session utilisateur depuis la requête HTTP
+func getSession(r *http.Request) (*sessions.Session, error) {
+	return store.Get(r, "user-session")
+}
+
+// Hash le mot de passe fourni
 func hashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash), err
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }
 
+// Insère un nouvel utilisateur dans la base
 func insertUser(db *sql.DB, prenom, nom, email, password string) error {
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
-		return fmt.Errorf("erreur lors du hash du mot de passe : %v", err)
+		return err
 	}
-
 	tab := "INSERT INTO utilisateur (email, prenom, nom, mdp, contenu, likes) VALUES (?, ?, ?, ?, ?, 0)"
 	_, err = db.Exec(tab, email, prenom, nom, hashedPassword, "")
-	if err != nil {
-		return fmt.Errorf("erreur lors de l'insertion de l'utilisateur : %v", err)
-	}
-	return nil
+	return err
 }
 
+// Insère un nouveau post dans la base
 func insertPost(db *sql.DB, title, email, contenu, category string) error {
-	fmt.Printf("Inserting post: %s | %s | %s | %s\n", title, email, contenu, category)
 	tab := "INSERT INTO posts (title, email, contenu, category, created_at) VALUES (?, ?, ?, ?, datetime('now'))"
 	_, err := db.Exec(tab, title, email, contenu, category)
-	if err != nil {
-		return fmt.Errorf("could not insert post: %v", err)
-	}
-	return nil
+	return err
 }
 
+// Insère un nouveau commentaire
 func insertComment(db *sql.DB, postID int, email, comment string) error {
 	tab := "INSERT INTO comments (post_id, email, comment, created_at) VALUES (?, ?, ?, datetime('now'))"
 	_, err := db.Exec(tab, postID, email, comment)
-	if err != nil {
-		return fmt.Errorf("could not insert comment: %v", err)
-	}
-	return nil
+	return err
 }
 
+// Récupère tous les posts (optionnellement par catégorie)
 func getPostsHandler(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	if category == "" {
-		category = "all" // Par défaut, afficher tous les posts
+		category = "all"
 	}
-
 	db, err := connectDB()
 	if err != nil {
-		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		http.Error(w, "Erreur de connexion", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
 	var rows *sql.Rows
 	if category == "all" {
-		// Récupérer tous les posts
 		rows, err = db.Query("SELECT id, title, email, contenu, created_at, category FROM posts ORDER BY created_at DESC")
 	} else {
-		// Récupérer les posts filtrés par catégorie
 		rows, err = db.Query("SELECT id, title, email, contenu, created_at, category FROM posts WHERE category = ? ORDER BY created_at DESC", category)
 	}
-
 	if err != nil {
-		http.Error(w, "Erreur lors de la récupération des posts", http.StatusInternalServerError)
+		http.Error(w, "Erreur lors de la requête", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -157,28 +153,27 @@ func getPostsHandler(w http.ResponseWriter, r *http.Request) {
 		var post Post
 		err := rows.Scan(&post.ID, &post.Title, &post.Email, &post.Contenu, &post.CreatedAt, &post.Category)
 		if err != nil {
-			http.Error(w, "Erreur lors du scan des posts", http.StatusInternalServerError)
+			http.Error(w, "Erreur lors du scan", http.StatusInternalServerError)
 			return
 		}
 		posts = append(posts, post)
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
 }
 
+// Récupère les posts selon une catégorie donnée
 func getPostsByCategoryHandler(w http.ResponseWriter, r *http.Request, category string) {
 	db, err := connectDB()
 	if err != nil {
-		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		http.Error(w, "Erreur de connexion", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	// Requête pour récupérer les posts filtrés par catégorie
 	rows, err := db.Query("SELECT id, title, email, contenu, created_at FROM posts WHERE category = ? ORDER BY created_at DESC", category)
 	if err != nil {
-		http.Error(w, "Erreur lors de la récupération des posts", http.StatusInternalServerError)
+		http.Error(w, "Erreur lors de la requête", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -188,201 +183,171 @@ func getPostsByCategoryHandler(w http.ResponseWriter, r *http.Request, category 
 		var post Post
 		err := rows.Scan(&post.ID, &post.Title, &post.Email, &post.Contenu, &post.CreatedAt)
 		if err != nil {
-			http.Error(w, "Erreur lors du scan des posts", http.StatusInternalServerError)
+			http.Error(w, "Erreur lors du scan", http.StatusInternalServerError)
 			return
 		}
 		posts = append(posts, post)
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
 }
 
+// Gère la connexion des utilisateurs et crée une session
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Requête reçue pour /login")
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 		return
 	}
-
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
-		return
-	}
-
+	r.ParseForm()
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	log.Printf("Email : %s, Mot de passe : %s", email, password)
-
 	db, err := connectDB()
 	if err != nil {
-		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		http.Error(w, "Erreur BDD", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
 	var hashedPassword string
 	err = db.QueryRow("SELECT mdp FROM utilisateur WHERE email = ?", email).Scan(&hashedPassword)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Utilisateur introuvable", http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	if err == sql.ErrNoRows || bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)) != nil {
+		http.Error(w, "Identifiants invalides", http.StatusUnauthorized)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		http.Error(w, "Mot de passe incorrect", http.StatusUnauthorized)
-		return
-	}
-
-	// Création de la session pour l'utilisateur
-	session, err := getSession(r)
-	if err != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
-		return
-	}
-	session.Values["email"] = email // Stocke l'email dans la session
-	err = session.Save(r, w)
-	if err != nil {
-		http.Error(w, "Erreur lors de la sauvegarde de la session", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirige vers la page d'accueil après la connexion réussie
+	session, _ := getSession(r)
+	session.Values["email"] = email
+	session.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// Gère l'inscription des utilisateurs et crée une session
 func signupHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Requête reçue pour /signup")
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 		return
 	}
-
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, "Erreur de lecture du formulaire", http.StatusBadRequest)
-		return
-	}
-
+	r.ParseForm()
 	prenom := r.FormValue("prenom")
 	nom := r.FormValue("nom")
 	email := r.FormValue("new_email")
 	password := r.FormValue("new_password")
 
-	log.Printf("Prénom : %s, Nom : %s, Email : %s", prenom, nom, email)
-
 	db, err := connectDB()
 	if err != nil {
-		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		http.Error(w, "Erreur BDD", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
 	err = insertUser(db, prenom, nom, email, password)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Erreur lors de l'inscription : %v", err), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Création automatique de la session après inscription
-	session, err := getSession(r)
-	if err != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
-		return
-	}
-	session.Values["email"] = email // Stocke l'email dans la session
-	err = session.Save(r, w)
-	if err != nil {
-		http.Error(w, "Erreur lors de la sauvegarde de la session", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirige vers la page d'accueil après l'inscription et la connexion
+	session, _ := getSession(r)
+	session.Values["email"] = email
+	session.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// Affiche la page principale si l'utilisateur est connecté
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	// Vérifie si l'utilisateur est connecté (session)
-	session, err := getSession(r)
-	if err != nil || session.Values["email"] == nil {
-		// Redirige vers la page de connexion si l'utilisateur n'est pas connecté
+	session, _ := getSession(r)
+	if session.Values["email"] == nil {
 		http.Redirect(w, r, "/connect.html", http.StatusSeeOther)
 		return
 	}
-
-	// Si l'utilisateur est connecté, affiche la page des posts
 	http.ServeFile(w, r, "index.html")
 }
 
+// Gère la création de nouveaux posts
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Requête reçue pour /create_post")
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// Vérifier si l'utilisateur est connecté
-	session, err := getSession(r)
-	if err != nil || session.Values["email"] == nil {
-		http.Error(w, "Vous devez être connecté pour créer un post", http.StatusUnauthorized)
+	session, _ := getSession(r)
+	if session.Values["email"] == nil {
+		http.Error(w, "Non autorisé", http.StatusUnauthorized)
 		return
 	}
-
-	email := session.Values["email"].(string) // Récupérer l'email de la session
+	email := session.Values["email"].(string)
 	title := r.FormValue("title")
 	contenu := r.FormValue("contenu")
-	category := r.FormValue("category") // Récupérer la catégorie choisie
-
+	category := r.FormValue("category")
 	if title == "" || contenu == "" || category == "" {
-		http.Error(w, "Tous les champs doivent être remplis", http.StatusBadRequest)
+		http.Error(w, "Champs requis", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("title : %s, Email : %s, Contenu : %s, Category: %s", title, email, contenu, category)
-
 	db, err := connectDB()
 	if err != nil {
-		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		http.Error(w, "Erreur BDD", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
+	insertPost(db, title, email, contenu, category)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
 
-	// Insérer le post avec la catégorie
-	err = insertPost(db, title, email, contenu, category)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Erreur lors de l'insertion du post : %v", err), http.StatusInternalServerError)
+// Gère l'ajout d'un commentaire à un post
+func addCommentHandler(w http.ResponseWriter, r *http.Request) {
+	var c Commentaire
+	json.NewDecoder(r.Body).Decode(&c)
+	if c.Email == "" || c.Contenu == "" || c.PostID == 0 {
+		http.Error(w, "Champs requis", http.StatusBadRequest)
 		return
 	}
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+	db.Exec("INSERT INTO comments(post_id, email, comment, created_at) VALUES (?, ?, ?, datetime('now'))", c.PostID, c.Email, c.Contenu)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Commentaire ajouté avec succès"})
+}
 
-	// Rediriger vers la page d'accueil après l'insertion
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+// Récupère les commentaires d'un post
+func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	postID := r.URL.Query().Get("post_id")
+	if postID == "" {
+		http.Error(w, "ID requis", http.StatusBadRequest)
+		return
+	}
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+	rows, err := db.Query("SELECT email, comment, created_at FROM comments WHERE post_id = ? ORDER BY created_at DESC", postID)
+	if err != nil {
+		http.Error(w, "Erreur de requête", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	var comments []Commentaire
+	for rows.Next() {
+		var c Commentaire
+		rows.Scan(&c.Email, &c.Contenu, &c.CreatedAt)
+		comments = append(comments, c)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
 }
 
 func main() {
 	db, err := connectDB()
 	if err != nil {
-		log.Fatalf("Impossible de se connecter à la base de données : %v", err)
+		log.Fatal(err)
 	}
 	defer db.Close()
-
-	err = createTable(db)
-	if err != nil {
-		log.Fatalf("Erreur lors de la création de la table : %v", err)
-	}
-
-	err = updateDatabaseSchema(db)
-	if err != nil {
-		log.Printf("Erreur lors de la mise à jour du schéma : %v", err)
-	}
-
-	fmt.Println("Serveur démarré sur http://localhost:8080")
+	createTable(db)
+	updateDatabaseSchema(db)
 
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/", indexHandler)
@@ -392,14 +357,14 @@ func main() {
 	http.HandleFunc("/posts/cyber", func(w http.ResponseWriter, r *http.Request) {
 		getPostsByCategoryHandler(w, r, "cyber")
 	})
-
 	http.HandleFunc("/posts/info", func(w http.ResponseWriter, r *http.Request) {
 		getPostsByCategoryHandler(w, r, "info")
 	})
-
 	http.HandleFunc("/posts/anglais", func(w http.ResponseWriter, r *http.Request) {
 		getPostsByCategoryHandler(w, r, "anglais")
 	})
+	http.HandleFunc("/comments", addCommentHandler)
+	http.HandleFunc("/comments/{id}", getCommentsHandler)
 	http.Handle("/connect.html", http.FileServer(http.Dir(".")))
 	http.Handle("/createPost.html", http.FileServer(http.Dir(".")))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

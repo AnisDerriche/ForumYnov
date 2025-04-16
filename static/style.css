@@ -1,0 +1,279 @@
+/* Style de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+/* Corps de la page */
+body {
+    background-color: #f4f4f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #2c3e50;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.navbar .logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.navbar .nav-links {
+    display: flex;
+    gap: 20px;
+}
+
+.navbar .nav-link,
+.navbar .btn-connexion {
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.navbar .nav-link:hover,
+.navbar .btn-connexion:hover {
+    text-decoration: underline;
+}
+
+/* Filtrage des catégories */
+.category-filter {
+    background-color: #ecf0f1;
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.category-filter h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.filter-links {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.filter-links .category-link {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.filter-links .category-link:hover {
+    background-color: #2980b9;
+}
+
+/* Container des posts */
+.posts-container {
+    margin: 20px auto;
+    max-width: 800px;
+}
+
+.post {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.post-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.post-email {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 10px;
+}
+
+.post-contenu {
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.post-date {
+    font-size: 14px;
+    color: #95a5a6;
+    margin-bottom: 15px;
+}
+
+/* Formulaire de commentaire */
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.comment-form input {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.comment-form button {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.comment-form button:hover {
+    background-color: #27ae60;
+}
+
+/* Commentaires */
+.comments {
+    margin-top: 20px;
+}
+
+.comment {
+    background-color: #ecf0f1;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.comment p {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.comment small {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+/* Style de la recherche */
+.search-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.search-box input {
+    padding: 10px;
+    width: 300px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+/* Message d'absence de posts */
+.posts-container p {
+    font-size: 18px;
+    color: #7f8c8d;
+    text-align: center;
+}
+
+/* Formulaire de création de post */
+.form-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.form-container h2 {
+    font-size: 26px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #2c3e50;
+}
+
+.form-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #34495e;
+    margin-top: 15px;
+}
+
+.form-container input[type="text"],
+.form-container textarea,
+.form-container select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    resize: vertical;
+    background-color: #f9f9f9;
+}
+
+.form-container textarea {
+    min-height: 120px;
+}
+
+.form-container button[type="submit"] {
+    width: 100%;
+    background-color: #3498db;
+    color: white;
+    padding: 14px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+.form-container button[type="submit"]:hover {
+    background-color: #2980b9;
+}
+
+/* Formulaires de connexion / inscription */
+.form-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-container input[type="email"],
+.form-container input[type="password"],
+.form-container input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: #f9f9f9;
+}
+
+.form-container button {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.form-container button:hover {
+    background-color: #27ae60;
+}
