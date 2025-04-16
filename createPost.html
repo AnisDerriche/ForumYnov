@@ -2,28 +2,37 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <title>Créer un post - Le Bazar Étudiant</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/main.js" defer></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Créer un Post</title>
 </head>
 <body>
-    <p>Bienvenue, c'est ici pour poster bg 😎</p>
-    <h2>Créer un post</h2>
-    <form action="/create_post" method="POST">
-        <label for="email">Ton email :</label>
-        <input type="email" id="email" name="email" required>
-        <br><br>
+    <nav class="navbar">
+        <div class="logo">Le Bazar Étudiant</div>
+        <div class="nav-links">
+            <a class="nav-link" href="/">Accueil</a>
+            <a class="nav-link" href="connect.html">Connexion</a>
+        </div>
+    </nav>
 
-        <label for="title">Titre :</label>
-        <input type="text" id="title" name="title" required>
-        <br><br>
+    <div class="form-container">
+        <h2>Créer un post</h2>
+        <form action="/create_post" method="POST">
+            <label for="title">Titre :</label>
+            <input type="text" id="title" name="title" required>
 
-        <label for="contenu">Contenu :</label>
-        <textarea id="contenu" name="contenu" required></textarea>
-        <br><br>
+            <label for="contenu">Contenu :</label>
+            <textarea id="contenu" name="contenu" required></textarea>
 
-        <button type="submit">Créer le post</button>
-    </form>
+            <label for="category">Catégorie :</label>
+            <select id="category" name="category" required>
+                <option value="general">Général</option>
+                <option value="cyber">Cybersécurité</option>
+                <option value="info">Informatique</option>
+                <option value="anglais">Anglais</option>
+            </select>
+
+            <button type="submit">Publier</button>
+        </form>
+    </div>
 </body>
 </html>

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3"
@@ -17,6 +18,7 @@ type Post struct {
 	Title     string `json:"title"`
 	Email     string `json:"email"`
 	Contenu   string `json:"contenu"`
+	Category  string `json:"category"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -56,12 +58,21 @@ func createTable(db *sql.DB) error {
 		email TEXT,
 		title TEXT,
 		contenu TEXT,
+		category TEXT,
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(email) REFERENCES utilisateur(email)
 	);
 	`
 	_, err := db.Exec(tab)
 	return err
+}
+
+func updateDatabaseSchema(db *sql.DB) error {
+	_, err := db.Exec("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'general'")
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+	return nil
 }
 
 var store = sessions.NewCookieStore([]byte("secret-key")) // Clé secrète pour les sessions
@@ -94,9 +105,10 @@ func insertUser(db *sql.DB, prenom, nom, email, password string) error {
 	return nil
 }
 
-func insertPost(db *sql.DB, title, email, contenu string) error {
-	tab := "INSERT INTO posts (title,email, contenu, created_at) VALUES (?,?, ?, datetime('now'))"
-	_, err := db.Exec(tab, title, email, contenu)
+func insertPost(db *sql.DB, title, email, contenu, category string) error {
+	fmt.Printf("Inserting post: %s | %s | %s | %s\n", title, email, contenu, category)
+	tab := "INSERT INTO posts (title, email, contenu, category, created_at) VALUES (?, ?, ?, ?, datetime('now'))"
+	_, err := db.Exec(tab, title, email, contenu, category)
 	if err != nil {
 		return fmt.Errorf("could not insert post: %v", err)
 	}
@@ -113,6 +125,11 @@ func insertComment(db *sql.DB, postID int, email, comment string) error {
 }
 
 func getPostsHandler(w http.ResponseWriter, r *http.Request) {
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		category = "all" // Par défaut, afficher tous les posts
+	}
+
 	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
@@ -120,7 +137,46 @@ func getPostsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, title, email, contenu, created_at FROM posts ORDER BY created_at DESC")
+	var rows *sql.Rows
+	if category == "all" {
+		// Récupérer tous les posts
+		rows, err = db.Query("SELECT id, title, email, contenu, created_at, category FROM posts ORDER BY created_at DESC")
+	} else {
+		// Récupérer les posts filtrés par catégorie
+		rows, err = db.Query("SELECT id, title, email, contenu, created_at, category FROM posts WHERE category = ? ORDER BY created_at DESC", category)
+	}
+
+	if err != nil {
+		http.Error(w, "Erreur lors de la récupération des posts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var posts []Post
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.ID, &post.Title, &post.Email, &post.Contenu, &post.CreatedAt, &post.Category)
+		if err != nil {
+			http.Error(w, "Erreur lors du scan des posts", http.StatusInternalServerError)
+			return
+		}
+		posts = append(posts, post)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
+func getPostsByCategoryHandler(w http.ResponseWriter, r *http.Request, category string) {
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Erreur de connexion à la base de données", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Requête pour récupérer les posts filtrés par catégorie
+	rows, err := db.Query("SELECT id, title, email, contenu, created_at FROM posts WHERE category = ? ORDER BY created_at DESC", category)
 	if err != nil {
 		http.Error(w, "Erreur lors de la récupération des posts", http.StatusInternalServerError)
 		return
@@ -282,13 +338,14 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	email := session.Values["email"].(string) // Récupérer l'email de la session
 	title := r.FormValue("title")
 	contenu := r.FormValue("contenu")
+	category := r.FormValue("category") // Récupérer la catégorie choisie
 
-	if title == "" || contenu == "" {
+	if title == "" || contenu == "" || category == "" {
 		http.Error(w, "Tous les champs doivent être remplis", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("title : %s, Email : %s, Contenu : %s", title, email, contenu)
+	log.Printf("title : %s, Email : %s, Contenu : %s, Category: %s", title, email, contenu, category)
 
 	db, err := connectDB()
 	if err != nil {
@@ -297,8 +354,8 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	// Insérer le post
-	err = insertPost(db, title, email, contenu)
+	// Insérer le post avec la catégorie
+	err = insertPost(db, title, email, contenu, category)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Erreur lors de l'insertion du post : %v", err), http.StatusInternalServerError)
 		return
@@ -320,6 +377,11 @@ func main() {
 		log.Fatalf("Erreur lors de la création de la table : %v", err)
 	}
 
+	err = updateDatabaseSchema(db)
+	if err != nil {
+		log.Printf("Erreur lors de la mise à jour du schéma : %v", err)
+	}
+
 	fmt.Println("Serveur démarré sur http://localhost:8080")
 
 	http.HandleFunc("/login", loginHandler)
@@ -327,7 +389,17 @@ func main() {
 	http.HandleFunc("/create_post", createPostHandler)
 	http.HandleFunc("/signup", signupHandler)
 	http.HandleFunc("/posts", getPostsHandler)
+	http.HandleFunc("/posts/cyber", func(w http.ResponseWriter, r *http.Request) {
+		getPostsByCategoryHandler(w, r, "cyber")
+	})
 
+	http.HandleFunc("/posts/info", func(w http.ResponseWriter, r *http.Request) {
+		getPostsByCategoryHandler(w, r, "info")
+	})
+
+	http.HandleFunc("/posts/anglais", func(w http.ResponseWriter, r *http.Request) {
+		getPostsByCategoryHandler(w, r, "anglais")
+	})
 	http.Handle("/connect.html", http.FileServer(http.Dir(".")))
 	http.Handle("/createPost.html", http.FileServer(http.Dir(".")))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
